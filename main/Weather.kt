@@ -31,7 +31,7 @@ val weatherClient = HttpClient(CIO) {
 }
 
 fun Routing.weather() {
-    val key = "430d76e413f741d4a08454fe036ccfa1"
+    val key = ""
 
     route("/iot") {
         get("/weather") {

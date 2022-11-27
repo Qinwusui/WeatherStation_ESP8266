@@ -1,6 +1,6 @@
 /**
  * @file WeatherStation.ino
- * @author Qinwusui (qinsansui@gmail.com)
+ * @author Qinwusui
  * @brief 
  * @version 0.1
  * @date 2022-11-27
