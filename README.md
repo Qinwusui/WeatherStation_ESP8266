@@ -23,24 +23,14 @@
 
 - 接线```[省略步骤]```
 
-- 准备和风天气KEY
+- 准备高德天气KEY
 
-  - [和风天气官网](https://dev.qweather.com/)
-  - 将Key填入```[WeatherStation.ino]```第39行```[TODO]```位置
+  - [高德天气官网](https://lbs.amap.com/api/webservice/guide/api/weatherinfo)
+  - 将Key填入```[WeatherStation.ino]```第50行```[TODO]```位置
   - 注意：
     - DHT数据引脚接在ESP8266的D5(也叫GPIO14)口上
   - 将```[Hanz.h]```放在```[C:\Users\[Lover]此处自行更改\AppData\Local\Arduino15\packages\esp8266\hardware\esp8266\3.0.2\libraries\Hanz]```下
-  - 搭建天气中转服务器(后面会解释原因)
-
-- 天气中转服务器的搭建
-
-  1. [为什么要搭建天气中转服务器?](https://blog.qweather.com/announce/s6-will-be-shut-down-soon/)
   
-        - 简单解释就是之前是使用的天气api即将过期，之前使用的api响应并没有Gzip压缩。而现在最新的天气api使用了Gzip压缩，在Esp8266上不好处理压缩后的字节流，故此使用了折中的方法，搭建一个中转服务器，将Gzip压缩的字节流解压后再发送给ESP8266。若你有更优解，欢迎提PR
-
-  2. 使用KtorServer+KtorClient实现请求中转与Gzip解压下发
-  3. 具体代码请查阅```[Weather.kt]```
-
 - 烧录进ESP8266```[省略步骤]```
 
 ## 注意事项
