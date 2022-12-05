@@ -29,7 +29,6 @@
   - 将Key填入```[WeatherStation.ino]```第50行```[TODO]```位置
   - 注意：
     - DHT数据引脚接在ESP8266的D5(也叫GPIO14)口上
-  - 将```[Hanz.h]```放在```[C:\Users\[Lover]此处自行更改\AppData\Local\Arduino15\packages\esp8266\hardware\esp8266\3.0.2\libraries\Hanz]```下
   
 - 烧录进ESP8266```[省略步骤]```
 
