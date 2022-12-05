@@ -1,12 +1,12 @@
 /**
  * @file WeatherStation.ino
  * @author Qinwusui
- * @brief 
+ * @brief
  * @version 0.1
  * @date 2022-11-27
- * 
+ *
  * @copyright Copyright (c) 2022
- * 
+ *
  */
 
 #include <Arduino.h>
@@ -47,7 +47,7 @@ Adafruit_SSD1306 oled(128, 64, &Wire, -1);
 String msg = "";
 String ssid = "";
 String pwd = "";
-String WeatherKey = "TODO";
+String WeatherKey = "";
 String loc = "";
 String locId = "";
 typedef struct WeatherData
@@ -55,15 +55,12 @@ typedef struct WeatherData
     String tmp;      //温度
     String text;     //天气描述
     String humidity; //相对湿度
-    String pressure; //压强
-    String precip;   //当前小时累计降水量
 } weather;
 weather wa;
 #include <Hanz.h>
 scu StartLogo[] = {
     0x00, 0x00, 0xC0, 0x00, 0x80, 0x0D, 0xC0, 0x0F, 0xE0, 0x0F, 0xF0, 0x1F, 0xF8, 0x1F, 0xFC, 0x13,
     0x34, 0x10, 0x30, 0x10, 0x60, 0x10, 0x74, 0x08, 0x78, 0x1E, 0xF0, 0x15, 0xC0, 0x1F, 0xC0, 0x0F};
-
 
 void doSth(uint8_t *s)
 {
@@ -287,7 +284,8 @@ void handleLocation()
     <body>
     <span>请填写你所在的地区</span><br>
     <form action="location">
-        <input type="text" name="location"  id="location">
+        <input type="text" name="location"  id="location"><br/>
+        <input type="text" name="key" id="key">
         <input type="submit" value="提交">
     </form>
     </body>
@@ -298,8 +296,9 @@ void handleLocation()
 void handleConfigLoc()
 {
     loc = server.arg("location");
+    WeatherKey = server.arg("key");
     File f = SPIFFS.open(locFile, "w");
-    f.print(loc);
+    f.print(loc + "-" + WeatherKey);
     f.close();
     String html = R"delimiter(
         <html lang="en">
@@ -396,21 +395,6 @@ void getLocalTemp()
 
     oled.clearDisplay();
     oled.drawXBitmap(2, 2, StartLogo, 16, 16, 1);
-
-    oled.drawFastHLine(0, 36, 128, 1);
-
-    oled.setTextSize(1);
-    // int h = dht.readHumidity();    //湿度
-    int t = dht.readTemperature(); //温度°C
-    // oled.setCursor(2, 48);
-    // oled.printf("Humi:%d", h);
-    oled.drawXBitmap(0, 50, 室温[0], 12, 12, 1);
-    oled.drawXBitmap(12, 50, 室温[1], 12, 12, 1);
-    oled.setCursor(26, 53);
-    oled.printf("%d", t);
-    oled.drawXBitmap(40, 50, TempC, 12, 12, 1);
-    oled.setCursor(46, 53);
-    oled.print("C");
     oled.setCursor(34, 12);
     oled.setTextSize(2);
     int hours = timeClient.getHours();
@@ -418,15 +402,25 @@ void getLocalTemp()
     // Serial.println(timeClient.getDay());
     oled.printf("%s:%s", hours < 10 ? "0" + String(hours) : String(hours),
                 min < 10 ? "0" + String(min) : String(min));
+    oled.drawFastHLine(0, 36, 128, 1);
     oled.setTextSize(1);
+    // int h = dht.readHumidity();    //湿度
+    int t = dht.readTemperature(); //温度°C
+    // oled.setCursor(2, 48);
+    // oled.printf("Humi:%d", h);
+    oled.drawXBitmap(0, 50, 室, 12, 12, 1);
+    oled.setCursor(12, 53);
+    oled.printf("%d", t);
+    oled.drawXBitmap(26, 50, TempC, 12, 12, 1);
+    oled.setCursor(34, 53);
+    oled.print("C");
     if (&wa != NULL)
     {
-        oled.drawXBitmap(54, 50, 外温[0], 12, 12, 1);
-        oled.drawXBitmap(66, 50, 外温[1], 12, 12, 1);
-        oled.setCursor(78, 53);
+        oled.drawXBitmap(46, 50, 外温[0], 12, 12, 1);
+        oled.setCursor(60, 53);
         oled.printf("%s", wa.tmp);
-        oled.drawXBitmap(90, 50, TempC, 12, 12, 1);
-        oled.setCursor(96, 53);
+        oled.drawXBitmap(72, 50, TempC, 12, 12, 1);
+        oled.setCursor(80, 53);
         oled.print("C");
     }
     int day = timeClient.getDay();
@@ -435,56 +429,43 @@ void getLocalTemp()
     oled.drawXBitmap(116, 50, WeekDay[day][1], 12, 12, 1); //一二三四五六日
     oled.display();
 }
-
 void initLoc()
 {
     loc = readLoc();
     if (loc == "")
     {
+        Serial.println("位置信息为空");
         return;
     }
-解决Gzip压缩的问题:
-    WiFiClient client;
-    String url = "192.168.1.125";
-    wa = WeatherData();
-    String content = (String)("GET ") + "/iot/weather?location=" + loc + "&key=" + WeatherKey +
-                     " HTTP/1.1\r\n " +
-                     "Content-Type: text/html;charset=utf-8\r\n" +
-                     "Connection: Keep Alive\r\n\r\n";
-    if (!client.connect(url, 54322))
+    std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
+    client->setInsecure();
+    HTTPClient https;
+    https.setTimeout(2000);
+    https.addHeader("Accept-Encoding", "none", false);
+    https.addHeader("Cache-Control", "no-cache");
+    https.addHeader("Connection", "keep-alive");
+    String url = "https://restapi.amap.com/v3/weather/weatherInfo?key=" + WeatherKey + "&city=" + loc + "&extensions=base";
+    if (https.begin(*client, url))
     {
-        Serial.println("不能连接到中转天气服务器");
-        return;
-    }
-    client.print(content);
-    String line = client.readStringUntil('\n');
-    while (client.available())
-    {
-        line = client.readStringUntil('\n');
-        if (line.startsWith("{"))
+        int code = 0;
+        if ((code = https.GET()) == 200)
         {
-            break;
+            String payload = https.getString();
+            Serial.flush();
+            DynamicJsonDocument json(2048);
+            deserializeJson(json, payload);
+            JsonObject obj = json["lives"][0].as<JsonObject>();
+            String tmp = obj["temperature"].as<String>();
+            String weather = obj["weather"].as<String>();
+            String humidity = obj["humidity"].as<String>();
+            wa.text = weather;
+            wa.humidity = humidity;
+            wa.tmp = tmp;
         }
     }
-    Serial.print(line);
-    line.trim();
-    DynamicJsonDocument json(line.length() * 2);
-    deserializeJson(json, line);
-    String temp = json["now"]["temp"].as<String>();
-    String text = json["now"]["text"].as<String>();
-    String humidity = json["now"]["humidity"].as<String>();
-    String precip = json["now"]["precip"].as<String>();
-    String pressure = json["now"]["pressure"].as<String>();
-    wa.humidity = humidity;
-    wa.precip = precip;
-    wa.pressure = pressure;
-    wa.text = text;
-    wa.tmp = temp;
-    client.stop();
 }
 
 String readLoc()
-
 {
     String s = "";
     File f = SPIFFS.open(locFile, "r");
@@ -498,5 +479,7 @@ String readLoc()
         s += (char)j;
     }
     f.close();
+    WeatherKey = s.substring(s.indexOf("-") + 1);
+    loc = s.substring(0, s.indexOf("-"));
     return s;
 }
